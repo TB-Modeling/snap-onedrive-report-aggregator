@@ -3,6 +3,7 @@ _archive*
 _ignore*
 /temp
 *.env
+env.json
 
 # Default
 __pycache__/

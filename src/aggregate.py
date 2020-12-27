@@ -44,7 +44,8 @@ from onedrivesdk_fork.helpers import GetAuthCodeServer
 # https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationMenuBlade/Authentication/quickStartType//sourceType/Microsoft_AAD_IAM/appId/3edae2b4-0150-450a-b8b6-bf2ee70c325f/objectId/40fc1653-1e91-4557-8655-0080aa65837a/isMSAApp/true/defaultBlade/Overview/appSignInAudience/PersonalMicrosoftAccount
 CONFIG = {
     # 'redirect_uri': 'https://localhost:8080/',
-    'redirect_uri': 'msal3edae2b4-0150-450a-b8b6-bf2ee70c325f://auth',
+    # 'redirect_uri': 'msal3edae2b4-0150-450a-b8b6-bf2ee70c325f://auth',
+    'redirect_uri': 'https://login.live.com/oauth20_desktop.srf',
     'client_id': os.getenv('ATTEMPT2_APP_ID', '...'),
     # 'client_secret': os.getenv('ATTEMPT2_TENANT_ID', '...'),
     'client_secret': os.getenv('xxx', None),
