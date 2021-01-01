@@ -5,68 +5,58 @@
 getting-started/msa-oauth?view=odsp-graph-online
 
 # Minor to-do's
+- Verified exists: If need get code and user pastes, does script correctly run
+  all the way through without any intermediate error and need to re-run a
+  second time? When I was developing, I had to run twice in a row one time.
 - Alternative to have user paste this into browser and copy/paste the token?
 - how make code and token last longer?:
   - https://docs.microsoft.com/en-us/onedrive/developer/rest-api/getting-started/graph-oauth?view=odsp-graph-online#step-3-get-a-new-access-token-or-refresh-token
   - can update token max life via powershell only
 """
+import base64
+# import json
 import os
+import re
+
 import requests
 import urllib.parse as urlparse
 from urllib.parse import parse_qs
-from typing import Dict
-from pprint import pprint
+from typing import Dict, List
 
 
+# Variables
 ROOT_DIR = os.path.join(
     os.path.dirname(os.path.realpath(__file__)), '..')
 CODE_FILE_PATH = os.path.join(ROOT_DIR, 'code.env')
 TOKEN_FILE_PATH = os.path.join(ROOT_DIR, 'token.env')
-
 CONFIG = {
-    # 'redirect_uri': 'msal3edae2b4-0150-450a-b8b6-bf2ee70c325f://auth',
-    # 'redirect_uri':
-    #     'https://login.microsoftonline.com/common/oauth2/nativeclient',
     'redirect_uri': 'https://login.live.com/oauth20_desktop.srf',
     'client_id': os.getenv('ATTEMPT2_APP_ID'),
-    # 'client_id': os.getenv('CLIENT_ID'),
-    # 'client_secret': os.getenv('ATTEMPT2_TENANT_ID'),
-    # secret id; 74492a9c-175a-4418-b381-7ad535c38314
-    # secret val; wCv35Dzw5AFgOMbE._CJ-EO-4C1-jfFVJH
     'client_secret': os.getenv('n/a', 'wCv35Dzw5AFgOMbE._CJ-EO-4C1-jfFVJH'),
     'api_base_url': 'https://api.onedrive.com/v1.0/',
-    # 'scopes': ['onedrive.readwrite']
-    'scopes': ['Files.ReadWrite.All']
+    'scopes': ['Files.ReadWrite.All'],
+    'fetch_headers': {
+        'Host': 'graph.microsoft.com',
+        'Authorization': 'Bearer {}'
+    }
 }
+
+# Update config
 client_id = CONFIG['client_id']
 scope = CONFIG['scopes'][0]
 redirect_uri = CONFIG['redirect_uri']
-auth_url_base = 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
+auth_url_base = \
+    'https://login.microsoftonline.com/common/oauth2/v2.0/authorize'
 fetch_url_base = 'https://graph.microsoft.com/v1.0/'
-# auth_url_base = 'https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize'
-# wont work w/ graph api:
-# auth_url_base = 'https://login.live.com/oauth20_authorize.srf'
-# token:
-# auth_url = f'{auth_url_base}?client_id={client_id}' \
-#       f'&scope={scope}&response_type=token&redirect_uri={redirect_uri}'
-# code:
 auth_url = f'{auth_url_base}?client_id={client_id}' \
            f'&scope={scope}&response_type=code&redirect_uri={redirect_uri}'
-# https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id={client_id}&scope={scope}&response_type=token&redirect_uri={redirect_uri}
-# https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id=3edae2b4-0150-450a-b8b6-bf2ee70c325f&response_type=token&redirect_uri=https://login.microsoftonline.com/common/oauth2/nativeclient&scope=onedrive.readwrite
 code_token_headers = {
     'client_id': CONFIG['client_id'],
     'redirect_uri': CONFIG['redirect_uri'],
-    # 'client_secret': CONFIG['client_secret'],
     'code': None,
     'grant_type': 'authorization_code'
 }
-CONFIG['fetch_headers'] = {
-    'Host': 'graph.microsoft.com',
-    # 'Authorization': 'Bearer {}'.format(token)
-    'Authorization': 'Bearer {}'
-}
-CONFIG['token'] = 'token'
+
 CONFIG['auth_url'] = auth_url
 CONFIG['code_token_url'] = auth_url
 CONFIG['code_token_headers'] = code_token_headers
@@ -76,8 +66,6 @@ def get_code(auth_url: str) -> str:
     """Get code"""
     # 1. Auth: Get code
     # - https://docs.microsoft.com/en-us/onedrive/developer/rest-api/getting-started/graph-oauth?view=odsp-graph-online#step-1-get-an-authorization-code
-    # response1 = requests.get(config['url'])
-    # Needs to be copy/pasted in browser I believe:
     msg = '2. In "step 1", you should either be asked to ' \
           'log in or auto-logged-in. After that, you should be redirected to ' \
           'a new blank page, and the URL in the address bar should look ' \
@@ -87,7 +75,7 @@ def get_code(auth_url: str) -> str:
     print('1. Open URL in browser to get auth code: \n', auth_url, '\n')
     url = input(msg)
     parsed = urlparse.urlparse(url)
-    code = parse_qs(parsed.query)['code']
+    code = parse_qs(parsed.query)['code'][0]
     if not code:
         raise RuntimeError('No code found. Url was: ', url)
     return code
@@ -107,15 +95,81 @@ def download_files(headers: Dict):
     """Download files"""
     # 3. fetch resources
     # - https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/drive_sharedwithme?view=odsp-graph-online
-    endpoint = 'me/drive/sharedWithMe'
+    # 1. List root files
+    # endpoint = 'me/drive/sharedWithMe'
+    endpoint = 'me/drive/root/children'
     fetch_url = fetch_url_base + endpoint
-    response: Dict = requests.get(
-        fetch_url,
-        headers=headers).json()
-    if 'error' in response.keys():
-        raise RuntimeError(response)
-    print('Fetch: ' + fetch_url)
-    pprint(response)
+    root_items: Dict = requests.get(fetch_url, headers=headers).json()
+    if 'error' in root_items.keys():
+        raise RuntimeError(root_items)
+    root_objs: List[Dict] = root_items['value']
+    root_objs: Dict = {
+        val['name']: val
+        for val in root_objs
+    }
+    snap_folders = {
+        k: v
+        for k, v in root_objs.items()
+        if re.match('SNAP_TAM_[0-9]{3}', k)
+    }
+    # Try 1: list & dl (fail)
+    # 2. List SNAP folder contents
+    # https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_list_children?view=odsp-graph-online
+    # snap_folder_contents: Dict = {}
+    # endpoint = 'me/drive/items'
+    # fetch_url_prefix = fetch_url_base + endpoint
+    # for k, v in snap_folders.items():
+    #     fetch_url = fetch_url_prefix + '/{}/children'.format(v['id'])
+    #     children = requests.get(fetch_url, headers=headers).json()
+    #     snap_folder_contents[k] = children
+    # 3. Dl files
+
+    # Try 2: straight dl (fail)
+    # endpoint = 'me/drive/items/'
+    # fetch_url_prefix = fetch_url_base + endpoint
+    # for k, v in snap_folders.items():
+    #     fetch_url = fetch_url_prefix + '/{}/content'.format(v['id'])
+    #     response = requests.get(fetch_url, headers=headers).json()
+
+    # print('Fetch: ' + fetch_url + '\n')
+    # pprint(json.dumps(response))
+
+    # Try 3.5: base 64
+    # {'error': {'code': 'invalidRequest', 'message': 'Invalid shares key.'
+    # for k, v in snap_folders.items():
+    #     weburl = v['remoteItem']['webUrl']
+    #     ascii_url = weburl.encode('ascii')
+    #     base64_url = base64.b64encode(ascii_url)
+    #     base64_url = base64_url[0:-1]
+    #     # cant replace bytes w/ str:
+    #     # encoded_url = base64_url.replace('/', '_').replace('+', '-')
+    #     encoded_url = str(base64_url)[2:-1]
+    #     fetch_url = fetch_url_prefix + '/{}' \
+    #         .format(encoded_url)
+
+    # Try 3: Shares endpoint
+    # GET /shares/{shareIdOrUrl}/driveItem?$expand=children
+    # - id: {'error': {'code': 'invalidRequest', 'message': 'Bad Argument',
+    # 'innerError': ...
+    # - remoteItem.id: {'error': {'code': 'invalidRequest', 'message':
+    # 'Bad Argument', 'innerError': ...
+    # - remoteItem.webUrl: {'error': {'code': 'BadRequest', 'message':
+    # "Resource not found for the segment '1drv.ms'.", 'innerError': ...
+    # - webUrl: {'error': {'code': 'BadRequest', 'message':
+    # "Resource not found for the segment '1drv.ms'.", 'innerError': ...
+    # ...
+    # 1drv.ms is from webUrls, e.g. https://1drv.ms/u/s!ANBLWsRA6bDCvEk
+    snap_folder_contents: Dict = {}
+    endpoint = 'shares'
+    fetch_url_prefix = fetch_url_base + endpoint
+    for k, v in snap_folders.items():
+        # fetch_url = fetch_url_prefix + '/{}/driveItem?$expand=children' \
+        fetch_url = fetch_url_prefix + '/{}' \
+            .format(v['remoteItem']['id'])
+            # .format(v['remoteItem']['webUrl'])
+        children = requests.get(fetch_url, headers=headers).json()
+        snap_folder_contents[k] = children
+
     print()
 
 
@@ -139,7 +193,8 @@ def run(config=CONFIG):
         with open(TOKEN_FILE_PATH, 'w') as file:
             file.write(token)
         headers = config['fetch_headers']
-        headers['Authorization'] = headers['Authorization'].format(token)
+        # headers['Authorization'] = headers['Authorization'].format(token)
+        headers['Authorization'] = 'Bearer ' + token
         # 3. download
         download_files(headers)
 
