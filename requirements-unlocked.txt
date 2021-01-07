@@ -1,3 +1,6 @@
 # onedrivesdk
 msal
 onedrivesdk_fork
+openpyxl
+pandas
+xlrd
