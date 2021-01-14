@@ -9,32 +9,65 @@
 Solution: Make sure the OneDrive program is running on your computer.
 
 """
+import json
 import os
 import pandas as pd
 import re
 
 from datetime import datetime
 from openpyxl import load_workbook
-from typing import List
+from typing import List, Dict
 
 
-# Necessary config options
-onedrive_dir_path = '/Users/joeflack4/OneDrive/'
-
-# Optional config options
-input_dir_regexp = 'SNAP_TAM_[0-9]{3}'
-worksheet_name = 'Data Entry Log'
-duration_colnames = ['Duration', 'Total Interaction Duration']
-output_dirname = 'SNAP_TAM_Aggregated'
-print_progress = False
-
-# Other variables
-valid_extensions = ['.xls', '.xlsx', '.xlsm']
-output_path = os.path.join(onedrive_dir_path, output_dirname)
+# Constants
+SCRIPT_PATH = os.path.realpath(__file__)
+PKG_DIR = os.path.dirname(SCRIPT_PATH)
+CONFIG_PATH = os.path.join(PKG_DIR, 'config.json')
+VALID_EXTENSIONS = ['.xls', '.xlsx', '.xlsm']
 
 
-def run():
+def run(
+    onedrive_dir_path: str = None,
+    input_dir_regexp: str = None,
+    worksheet_name: str = None,
+    duration_colnames: str = None,
+    output_dirname: str = None,
+    print_progress: bool = None
+):
     """Run"""
+    args: Dict = locals()
+    config: Dict = None
+
+    with open(CONFIG_PATH, 'r') as config_file:
+        config = json.load(config_file)
+        for arg_key, arg_val in args.items():
+            if arg_key in config.keys() and arg_val:
+                config[arg_key] = arg_val
+    with open(CONFIG_PATH, 'w') as config_file:
+        json_string = json.dumps(
+            config,
+            default=lambda o: o.__dict__,  # pretty prints
+            indent=2)
+        config_file.write(json_string)
+
+    onedrive_dir_path: str = config['onedrive_dir_path']
+    input_dir_regexp: str = config['input_dir_regexp']
+    worksheet_name: str = config['worksheet_name']
+    duration_colnames: str = config['duration_colnames']
+    output_dirname: str = config['output_dirname']
+    print_progress: bool = config['print_progress']
+
+    if not onedrive_dir_path:
+        onedrive_dir_path: str = input('Enter path to OneDrive folder: ')
+        config['onedrive_dir_path']: str = onedrive_dir_path
+        with open(CONFIG_PATH, 'w') as config_file:
+            json_string = json.dumps(
+                config,
+                default=lambda o: o.__dict__,  # pretty prints
+                indent=2)
+            config_file.write(json_string)
+
+    output_path = os.path.join(onedrive_dir_path, output_dirname)
     onedrive_root_contents: List[str] = os.listdir(onedrive_dir_path)
     snap_dirs: List[str] = [
         os.path.join(onedrive_dir_path, x) for x in onedrive_root_contents
@@ -44,7 +77,7 @@ def run():
     for folder in snap_dirs:
         candidates = [
             y for y in os.listdir(folder)
-            if any([y.endswith(ext) for ext in valid_extensions])]
+            if any([y.endswith(ext) for ext in VALID_EXTENSIONS])]
         for candidate in candidates:
             path = os.path.join(folder, candidate)
             snap_files.append(path)

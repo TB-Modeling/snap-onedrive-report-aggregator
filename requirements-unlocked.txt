@@ -1,6 +1,12 @@
+## Unused
 # onedrivesdk
-msal
-onedrivesdk_fork
+# msal
+# onedrivesdk_fork
+
+## Dependencies
 openpyxl
 pandas
-xlrd
+
+## Dev Dependencies
+pipx
+twine
