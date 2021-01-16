@@ -31,7 +31,7 @@ def run(
     input_dir_regexp: str = None,
     worksheet_name: str = None,
     duration_colnames: str = None,
-    output_dirname: str = None,
+    output_dirname_regexp: str = None,
     print_progress: bool = None
 ):
     """Run"""
@@ -54,7 +54,7 @@ def run(
     input_dir_regexp: str = config['input_dir_regexp']
     worksheet_name: str = config['worksheet_name']
     duration_colnames: str = config['duration_colnames']
-    output_dirname: str = config['output_dirname']
+    output_dirname_regexp: str = config['output_dirname_regexp']
     print_progress: bool = config['print_progress']
 
     if not onedrive_dir_path:
@@ -67,11 +67,32 @@ def run(
                 indent=2)
             config_file.write(json_string)
 
-    output_path = os.path.join(onedrive_dir_path, output_dirname)
-    onedrive_root_contents: List[str] = os.listdir(onedrive_dir_path)
-    snap_dirs: List[str] = [
-        os.path.join(onedrive_dir_path, x) for x in onedrive_root_contents
-        if re.match(input_dir_regexp, x)]
+    print('Running...')
+
+    # Find snap dirs
+    snap_dirs: List[str] = []
+    for root, dirs, files in os.walk(onedrive_dir_path):
+        for name in dirs:
+            for regexp in input_dir_regexp:
+                if re.match(regexp, name):
+                    path = os.path.join(root, name)
+                    snap_dirs.append(path)
+                    break
+
+    # Find output dir
+    output_path: str = None
+    for root, dirs, files in os.walk(onedrive_dir_path):
+        for name in dirs:
+            if re.match(output_dirname_regexp, name):
+                path = os.path.join(root, name)
+                output_path = path
+                break
+    if not output_path:
+        # Hopefully in this case they didn't acutally put a regexp:
+        output_dirname = output_dirname_regexp
+
+        output_path = os.path.join(onedrive_dir_path, output_dirname)
+        os.mkdir(output_path)
 
     snap_files: List[str] = []
     for folder in snap_dirs:
@@ -140,8 +161,7 @@ def run(
     filename = (str(datetime.now()) + '.csv').replace(':', '-')
     outpath = os.path.join(output_path, filename)
     df.to_csv(outpath, index=False)
-    if print_progress:
-        print('Done')
+    print(f'Created: {outpath}')
 
 
 if __name__ == '__main__':
