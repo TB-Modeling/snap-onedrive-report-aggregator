@@ -2,7 +2,7 @@
 Utility for ModelTB.org team. Aggregates SNaP reports to a single file.
 
 ## Prerequisites
-1. Gain access to the following OneDrive folders: TODO
+1. Gain access to the appropriate OneDrive folders.
 2. Install [OneDrive](https://www.microsoft.com/en-us/microsoft-365/onedrive/download)
 3. Install [Python](https://www.python.org/downloads/)
 
