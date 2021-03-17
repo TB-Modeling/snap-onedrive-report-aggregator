@@ -70,6 +70,9 @@ def run(
     print('Running...')
 
     # Find snap dirs
+    # TODO: If 0 records, or if snap_interviewer not found, or no matches to
+    # ...the regexp pattern with 3 numbers at end. show a message.
+    # ...Currently, the error just shows if nothing found at all.
     snap_dirs: List[str] = []
     for root, dirs, files in os.walk(onedrive_dir_path):
         for name in dirs:
@@ -78,6 +81,11 @@ def run(
                     path = os.path.join(root, name)
                     snap_dirs.append(path)
                     break
+
+    err = 'No folders found matching either of the following folder ' \
+          'patterns: ' + str(input_dir_regexp)
+    if not snap_dirs:
+        raise RuntimeError(err)
 
     # Find output dir
     output_path: str = None

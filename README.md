@@ -20,7 +20,7 @@ Utility for ModelTB.org team. Aggregates SNaP reports to a single file.
 2. Enter command: `snap-tam`
 
 ## Configuration
-When running for the first time, you will be asked to enter the path to your OneDrive installation. What you enter will be stored in the config file.
+When running for the first time, you will be asked to enter the path to your OneDrive installation. What you enter will be stored in the config file. If you have trouble getting the path to the folder, here are some instructions that you can use, depending on your OS: [Mac](https://www.switchingtomac.com/tutorials/osx/5-ways-to-reveal-the-path-of-a-file-on-macos/) || [Windows](https://www.laptopmag.com/articles/show-full-folder-path-file-explorer)
 
 You can also edit the config file in order to update any changed or incorrectly entered information. Additional options for further customization are also available.
 
@@ -41,3 +41,7 @@ Config file w/ default values:
   "print_progress": false
 }
 ```
+
+## Troubleshooting
+- If python commands don't work, try replacing `python` with `python3`, e.g. `python -m pip install pipx` --> `python3 -m pip install pipx`.
+- If installation succeeds, but the program doesn't work, an immediate upgrade may solve the problem. To upgrade, execute from the command line: `pipx upgrade snap-tam`
